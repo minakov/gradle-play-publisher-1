@@ -21,8 +21,8 @@ class PlayPublisherPlugin implements Plugin<Project> {
         def extension = project.extensions.create('play', PlayPublisherPluginExtension)
 
         project.android.applicationVariants.all { variant ->
-            if (!variant.buildType.name.equals("release")) {
-                log.debug("Skipping build type ${variant.buildType.name}.")
+            if (variant.buildType.isDebuggable()) {
+                log.debug("Skipping debuggable build type ${variant.buildType.name}.")
                 return
             }
 
@@ -61,17 +61,23 @@ class PlayPublisherPlugin implements Plugin<Project> {
             if (StringUtils.isNotEmpty(flavor)) {
                 bootstrapTask.outputFolder = new File(project.getProjectDir(), "src/${flavor}/play")
             } else {
-                bootstrapTask.outputFolder = new File(project.getProjectDir(), "src/main/play")
+                bootstrapTask.outputFolder = new File(project.getProjectDir(), "src/${variant.buildType.name}/play")
             }
-            bootstrapTask.description = "Downloads the play store listing for the ${variationName} build"
+            bootstrapTask.description = "Downloads the play store listing for the ${variationName} build. No download of image resources. See #18."
             bootstrapTask.group = PLAY_STORE_GROUP
 
             // Create and configure task to collect the play store resources.
             def playResourcesTask = project.tasks.create(playResourcesTaskName, GeneratePlayResourcesTask)
+
             playResourcesTask.inputs.file(new File(project.getProjectDir(), "src/main/play"))
             if (StringUtils.isNotEmpty(flavor)) {
                 playResourcesTask.inputs.file(new File(project.getProjectDir(), "src/${flavor}/play"))
             }
+            playResourcesTask.inputs.file(new File(project.getProjectDir(), "src/${variant.buildType.name}/play"))
+            if (StringUtils.isNotEmpty(flavor)) {
+                playResourcesTask.inputs.file(new File(project.getProjectDir(), "src/${variant.name}/play"))
+            }
+
             playResourcesTask.outputFolder = new File(project.getProjectDir(), "build/outputs/play/${variant.name}")
             playResourcesTask.description = "Collects play store resources for the ${variationName} build"
             playResourcesTask.group = PLAY_STORE_GROUP
